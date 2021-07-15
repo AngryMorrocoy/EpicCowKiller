@@ -18,7 +18,10 @@ public class main extends LoopScript {
     private NPC cowNPC;
     private final Tile CastleStairs = new Tile(3206, 3228);
     private final Tile CowsEntrance = new Tile(3249, 3266);
-    private final Tile CowsTerrain = new Tile(3260, 3266);
+    private final Tile[] CowsTerrain = {
+            new Tile(3253, 3271), // Northern point
+            new Tile(3265, 3255), // Southern point
+    };
 
     private NPC getCowNPC() {
         return getAPIContext().npcs().query()
@@ -55,7 +58,17 @@ public class main extends LoopScript {
     }
 
     private boolean isPLayerOnCowsTerrain() {
-        return getAPIContext().localPlayer().getLocation().distanceTo(getAPIContext(), CowsTerrain) <= 7;
+        int northernX, northernY, southernX, southernY, playerX, playerY;
+        Tile localLocation = getAPIContext().localPlayer().getLocation();
+        playerX = localLocation.getX();
+        playerY = localLocation.getY();
+        northernX = CowsTerrain[0].getX();
+        northernY = CowsTerrain[0].getY();
+        southernX = CowsTerrain[1].getX();
+        southernY = CowsTerrain[1].getY();
+        return (playerY <= northernY && playerY >= southernY)
+                &&
+                (playerX >= northernX && playerX <= southernX);
     }
 
     private void fixCamera() {
@@ -70,15 +83,7 @@ public class main extends LoopScript {
         if (apiContext.game().getGameState() != LOGGED_IN) {
             return 500;
         }
-
         fixCamera();
-
-//        if (isPLayerOnCowsTerrain()) {
-//            System.out.println("You're near of the cows!");
-//        } else {
-//            System.out.println("You're not near of the cows!>:c");
-//        }
-
         // If inventory is full
         if (apiContext.inventory().isFull()) {
             Tile destination = CastleStairs;
@@ -142,6 +147,9 @@ public class main extends LoopScript {
             }
 
         }
+//        else if (!isPLayerOnCowsTerrain()) {
+//
+//        }
         // If the player isn't interacting with anything
         else if (apiContext.localPlayer().getInteracting() == null) {
             // Get the nearest cow
@@ -168,6 +176,11 @@ public class main extends LoopScript {
         return 200;
     }
 //    protected int loop() {
+//        if (isPLayerOnCowsTerrain()) {
+//            System.out.println("You're near of the cows!");
+//        } else {
+//            System.out.println("You're not near of the cows!>:c");
+//        }
 //        APIContext apiContext = getAPIContext();
 //        if (apiContext.game().getGameState() != LOGGED_IN) {
 //            return 500;
