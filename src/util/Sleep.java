@@ -19,6 +19,14 @@ public class Sleep {
         }
     }
 
+    public static void sleepUntilDelay(APIContext ctx, BooleanSupplier breakCondition, int itDelay) {
+        long startTime = System.currentTimeMillis();
+        while (ctx.script().isRunning() && !ctx.script().isPaused()) {
+            if (breakCondition.getAsBoolean() || System.currentTimeMillis() - startTime >= DEFAULT_SLEEP_TIMEOUT) break;
+            Time.sleep(itDelay);
+        }
+    }
+
     public static void sleepUntil(APIContext ctx, BooleanSupplier breakCondition, int timeOut) {
         long startTime = System.currentTimeMillis();
         while (ctx.script().isRunning() && !ctx.script().isPaused()) {
