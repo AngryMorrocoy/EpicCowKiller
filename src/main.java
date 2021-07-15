@@ -8,7 +8,6 @@ import com.epicbot.api.shared.model.path.Path;
 import com.epicbot.api.shared.query.result.LocatableEntityQueryResult;
 import com.epicbot.api.shared.script.LoopScript;
 import com.epicbot.api.shared.script.ScriptManifest;
-import com.epicbot.api.shared.util.time.Time;
 import util.Sleep;
 
 import static com.epicbot.api.os.model.game.GameState.LOGGED_IN;
@@ -91,7 +90,8 @@ public class main extends LoopScript {
             }
 
             // If the cannot reach the destination, it means the gate is closed, so it opens it
-            if (!apiContext.localPlayer().getLocation().canReach(apiContext, destination) && apiContext.localPlayer().getLocation().getPlane() < 1) {
+            if (!apiContext.localPlayer().getLocation().canReach(apiContext, destination)
+                    && apiContext.localPlayer().getLocation().getPlane() < 1) {
                 SceneObject gate = apiContext.objects().query()
                         .nameMatches("Gate")
                         .reachable()
@@ -100,7 +100,9 @@ public class main extends LoopScript {
                 if (gate.hasAction("Open")) {
                     // Move the camera, so you can see it to interact with
                     if (!gate.isVisible()) {
-                        apiContext.camera().setYaw(apiContext.camera().getAngleToDeg(apiContext.localPlayer().getLocation(), gate));
+                        int angleToGate = apiContext.camera()
+                                .getAngleToDeg(apiContext.localPlayer().getLocation(), gate);
+                        apiContext.camera().setYaw(angleToGate);
                         Sleep.sleepUntil(apiContext, gate::isVisible, 10000);
                         if (!gate.isVisible()) {
                             apiContext.walking().walkTo(gate, 2);
@@ -112,11 +114,13 @@ public class main extends LoopScript {
                 }
             }
             // If near enough to the stairs, run
-            if (apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 13 && !apiContext.walking().isRunEnabled()) {
+            if (apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 13
+                    && !apiContext.walking().isRunEnabled()) {
                 apiContext.walking().setRun(true);
             }
             // Walk to the stairs if in plane 0, and obviously not there
-            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1) && apiContext.localPlayer().getLocation().getPlane() < 1) {
+            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1)
+                    && apiContext.localPlayer().getLocation().getPlane() < 1) {
                 apiContext.walking().walkPath(path.getTiles());
             } else {
                 // Climb up stairs, until plane == 2 which is the plane where bank is at
@@ -147,11 +151,9 @@ public class main extends LoopScript {
                 atackCow();
                 // If interacting
                 if (apiContext.localPlayer().getInteracting() != null) {
-//                    if (!apiContext.localPlayer().getInteracting().equals(cowNPC)) {
-//                        cowNPC = (NPC) apiContext.localPlayer().getInteracting();
-//                    }
-                    Sleep.sleepUntil(apiContext, () -> cowNPC.isDead() || apiContext.localPlayer().getInteracting() == null);  // Wait until cow dies
-//                    getNearestCowhides().interact("Take");  // Takes the nearest cowhide on floor
+                    // Wait until cow dies
+                    Sleep.sleepUntil(apiContext,
+                            () -> cowNPC.isDead() || apiContext.localPlayer().getInteracting() == null);
                     // Wait till the cowhide is on the inventory
                     getNearestCowhides().forEach((GroundItem item) -> {
                         if (!apiContext.inventory().isFull()) {
