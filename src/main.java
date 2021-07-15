@@ -5,11 +5,9 @@ import com.epicbot.api.shared.entity.NPC;
 import com.epicbot.api.shared.entity.SceneObject;
 import com.epicbot.api.shared.model.Tile;
 import com.epicbot.api.shared.model.path.Path;
-import com.epicbot.api.shared.model.path.ScreenPath;
 import com.epicbot.api.shared.query.result.LocatableEntityQueryResult;
 import com.epicbot.api.shared.script.LoopScript;
 import com.epicbot.api.shared.script.ScriptManifest;
-import com.epicbot.api.shared.util.time.Time;
 import util.Sleep;
 
 import static com.epicbot.api.os.model.game.GameState.LOGGED_IN;
@@ -18,8 +16,9 @@ import static com.epicbot.api.os.model.game.GameState.LOGGED_IN;
 public class main extends LoopScript {
 
     private NPC cowNPC;
-    private final Tile CastleEntrance = new Tile(3217, 3218, 0);
     private final Tile CastleStairs = new Tile(3206, 3228);
+    private final Tile CowsEntrance = new Tile(3249, 3266);
+    private final Tile CowsTerrain = new Tile(3260, 3266);
 
     private NPC getCowNPC() {
         return getAPIContext().npcs().query()
@@ -38,12 +37,11 @@ public class main extends LoopScript {
                 .nearest();
     }
 
-    private GroundItem getNearestCowHide() {
+    private LocatableEntityQueryResult<GroundItem> getNearestCowhides() {
         return getAPIContext().groundItems().query()
                 .nameMatches("Cowhide")
                 .reachable()
-                .results()
-                .nearest();
+                .results();
     }
 
     private int getCowhideCount() {
@@ -56,29 +54,40 @@ public class main extends LoopScript {
         getAPIContext().mouse().moveOffScreen();
     }
 
+    private boolean isPLayerOnCowsTerrain() {
+        return getAPIContext().localPlayer().getLocation().distanceTo(getAPIContext(), CowsTerrain) <= 7;
+    }
+
     @Override
     protected int loop() {
         APIContext apiContext = getAPIContext();
         if (apiContext.game().getGameState() != LOGGED_IN) {
             return 500;
         }
+
+        if (isPLayerOnCowsTerrain()) {
+            System.out.println("You're near of the cows!");
+        } else {
+            System.out.println("You're not near of the cows!>:c");
+        }
+
         // If inventory is full
         if (apiContext.inventory().isFull()) {
             Path path = apiContext.walking().findPath(CastleStairs);
-            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1) && apiContext.localPlayer().getLocation().getPlane() != 2) {
+
+            if (apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 13 && !apiContext.walking().isRunEnabled()) {
+                apiContext.walking().setRun(true);
+            }
+            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1) && apiContext.localPlayer().getLocation().getPlane() < 1) {
                 apiContext.walking().walkPath(path.getTiles());
             } else {
                 System.out.println("Getting plane");
                 int oldPlane = apiContext.localPlayer().getLocation().getPlane();
                 if (oldPlane == 2) {
-                    System.out.println("Plane == 2");
                     if (apiContext.bank().open()) {
                         Sleep.sleepUntil(apiContext, () -> apiContext.bank().isOpen());
-                        System.out.println("Banking cowhide!");
                         apiContext.bank().depositAll("Cowhide");
                         Sleep.sleepUntil(apiContext, () -> getCowhideCount() == 0);
-                        System.out.println("Banked cowhide");
-                        apiContext.script().stop("uwu");
                     }
                 } else {
                     getStairCase().interact("Climb-up");
@@ -99,12 +108,16 @@ public class main extends LoopScript {
 //                    if (!apiContext.localPlayer().getInteracting().equals(cowNPC)) {
 //                        cowNPC = (NPC) apiContext.localPlayer().getInteracting();
 //                    }
-                    Sleep.sleepUntil(apiContext, () -> cowNPC.isDead());  // Wait until cow dies
-                    Sleep.sleepUntil(apiContext, () -> getNearestCowHide() != null);  // Wait until drop appears
-                    int oldCowHideOnInv = getCowhideCount();
-                    getNearestCowHide().interact("Take");  // Takes the nearest cowhide on floor
+                    Sleep.sleepUntil(apiContext, () -> cowNPC.isDead() || apiContext.localPlayer().getInteracting() == null);  // Wait until cow dies
+//                    getNearestCowhides().interact("Take");  // Takes the nearest cowhide on floor
                     // Wait till the cowhide is on the inventory
-                    Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv);
+                    getNearestCowhides().forEach((GroundItem item) -> {
+                        if (!apiContext.inventory().isFull()) {
+                            int oldCowHideOnInv = getCowhideCount();
+                            item.interact("Take");
+                            Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv);
+                        }
+                    });
                 }
             }
         }
