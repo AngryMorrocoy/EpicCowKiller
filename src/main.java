@@ -8,6 +8,7 @@ import com.epicbot.api.shared.model.path.Path;
 import com.epicbot.api.shared.query.result.LocatableEntityQueryResult;
 import com.epicbot.api.shared.script.LoopScript;
 import com.epicbot.api.shared.script.ScriptManifest;
+import com.epicbot.api.shared.util.time.Time;
 import util.Sleep;
 
 import static com.epicbot.api.os.model.game.GameState.LOGGED_IN;
@@ -58,6 +59,12 @@ public class main extends LoopScript {
         return getAPIContext().localPlayer().getLocation().distanceTo(getAPIContext(), CowsTerrain) <= 7;
     }
 
+    private void fixCamera() {
+        if (getAPIContext().camera().getPitch() < 85) {
+            getAPIContext().camera().setPitch(88, true);
+        }
+    }
+
     @Override
     protected int loop() {
         APIContext apiContext = getAPIContext();
@@ -65,31 +72,66 @@ public class main extends LoopScript {
             return 500;
         }
 
-        if (isPLayerOnCowsTerrain()) {
-            System.out.println("You're near of the cows!");
-        } else {
-            System.out.println("You're not near of the cows!>:c");
-        }
+        fixCamera();
+
+//        if (isPLayerOnCowsTerrain()) {
+//            System.out.println("You're near of the cows!");
+//        } else {
+//            System.out.println("You're not near of the cows!>:c");
+//        }
 
         // If inventory is full
         if (apiContext.inventory().isFull()) {
+            Tile destination = CastleStairs;
+            // Creates the path from the current location to the stairs of the castle
             Path path = apiContext.walking().findPath(CastleStairs);
+            if (path == null) {
+                destination = apiContext.walking().getClosestTileOnMap(CastleStairs);
+                path = apiContext.walking().findPath(destination);
+            }
 
+            // If the cannot reach the destination, it means the gate is closed, so it opens it
+            if (!apiContext.localPlayer().getLocation().canReach(apiContext, destination) && apiContext.localPlayer().getLocation().getPlane() < 1) {
+                SceneObject gate = apiContext.objects().query()
+                        .nameMatches("Gate")
+                        .reachable()
+                        .results()
+                        .nearest();  // Gets the nearest gate
+                if (gate.hasAction("Open")) {
+                    // Move the camera, so you can see it to interact with
+                    if (!gate.isVisible()) {
+                        apiContext.camera().setYaw(apiContext.camera().getAngleToDeg(apiContext.localPlayer().getLocation(), gate));
+                        Sleep.sleepUntil(apiContext, gate::isVisible, 10000);
+                        if (!gate.isVisible()) {
+                            apiContext.walking().walkTo(gate, 2);
+                            return 400;
+                        }
+                    }
+                    gate.interact("Open");
+                    return 750;
+                }
+            }
+            // If near enough to the stairs, run
             if (apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 13 && !apiContext.walking().isRunEnabled()) {
                 apiContext.walking().setRun(true);
             }
+            // Walk to the stairs if in plane 0, and obviously not there
             if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1) && apiContext.localPlayer().getLocation().getPlane() < 1) {
                 apiContext.walking().walkPath(path.getTiles());
             } else {
-                System.out.println("Getting plane");
+                // Climb up stairs, until plane == 2 which is the plane where bank is at
                 int oldPlane = apiContext.localPlayer().getLocation().getPlane();
                 if (oldPlane == 2) {
+                    // If in bank floor, open bank
                     if (apiContext.bank().open()) {
+                        // Wait until bank is open
                         Sleep.sleepUntil(apiContext, () -> apiContext.bank().isOpen());
+                        // Deposit all the cowhide
                         apiContext.bank().depositAll("Cowhide");
                         Sleep.sleepUntil(apiContext, () -> getCowhideCount() == 0);
                     }
                 } else {
+                    // Climb up the stairs and wait until plane gets bigger
                     getStairCase().interact("Climb-up");
                     Sleep.sleepUntil(apiContext, () -> oldPlane < apiContext.localPlayer().getLocation().getPlane());
                 }
