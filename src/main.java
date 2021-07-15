@@ -65,7 +65,7 @@ public class main extends LoopScript {
         // If inventory is full
         if (apiContext.inventory().isFull()) {
             Path path = apiContext.walking().findPath(CastleStairs);
-            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1)) {
+            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1) && apiContext.localPlayer().getLocation().getPlane() != 2) {
                 apiContext.walking().walkPath(path.getTiles());
             } else {
                 System.out.println("Getting plane");
