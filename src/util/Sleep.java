@@ -19,6 +19,14 @@ public class Sleep {
         }
     }
 
+    public static void sleepUntil(APIContext ctx, BooleanSupplier breakCondition, int timeOut) {
+        long startTime = System.currentTimeMillis();
+        while (ctx.script().isRunning() && !ctx.script().isPaused()) {
+            if (breakCondition.getAsBoolean() || System.currentTimeMillis() - startTime >= timeOut) break;
+            Time.sleep(100);
+        }
+    }
+
     public static void sleepUntilDelay(APIContext ctx, BooleanSupplier breakCondition, int itDelay) {
         long startTime = System.currentTimeMillis();
         while (ctx.script().isRunning() && !ctx.script().isPaused()) {
@@ -27,12 +35,13 @@ public class Sleep {
         }
     }
 
-    public static void sleepUntil(APIContext ctx, BooleanSupplier breakCondition, int timeOut) {
+    public static void sleepUntilDelay(APIContext ctx, BooleanSupplier breakCondition, int itDelay, int timeOut) {
         long startTime = System.currentTimeMillis();
         while (ctx.script().isRunning() && !ctx.script().isPaused()) {
             if (breakCondition.getAsBoolean() || System.currentTimeMillis() - startTime >= timeOut) break;
-            Time.sleep(100);
+            Time.sleep(itDelay);
         }
     }
+
 
 }
