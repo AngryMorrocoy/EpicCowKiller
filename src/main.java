@@ -148,7 +148,6 @@ public class main extends LoopScript {
 
         }
 //        else if (!isPLayerOnCowsTerrain()) {
-//
 //        }
         // If the player isn't interacting with anything
         else if (apiContext.localPlayer().getInteracting() == null) {
