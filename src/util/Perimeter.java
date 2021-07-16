@@ -45,4 +45,18 @@ public class Perimeter {
         return isInside;
     }
 
+    public Tile getCenterTile() {
+        int midX = northernTile.getX() +
+                Math.floorDiv(
+                        Math.abs( northernTile.getX() - southernTile.getX() ),
+                        2
+                );
+        int midY = southernTile.getY() +
+                Math.floorDiv(
+                        Math.abs( northernTile.getY() - southernTile.getY() ),
+                        2
+                );
+        return new Tile(midX, midY);
+    }
+
 }
