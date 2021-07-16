@@ -9,7 +9,7 @@ public class Perimeter {
     private final Tile southernTile;
 
     public Perimeter(Tile tile1, Tile tile2) {
-        if (tile1.getY() <= tile2.getY() && tile1.getX() <= tile2.getX()) {
+        if (tile1.getY() >= tile2.getY() && tile1.getX() <= tile2.getX()) {
             this.northernTile = tile1;
             this.southernTile = tile2;
             return;
@@ -19,7 +19,7 @@ public class Perimeter {
     }
 
     public Perimeter(int x1, int y1, int x2, int y2) {
-        if (y1 <= y2 && x1 <= x2) {
+        if (y1 >= y2 && x1 <= x2) {
             this.northernTile = new Tile(x1, y1);
             this.southernTile = new Tile(x2, y2);
             return;
@@ -29,6 +29,8 @@ public class Perimeter {
     }
 
     public boolean isPlayerInside(APIContext ctx) {
+        System.out.println(this.northernTile);
+        System.out.println(this.southernTile);
         int playerX, playerY;
         boolean isInside = true;
         Tile localLocation = ctx.localPlayer().getLocation();
@@ -36,12 +38,11 @@ public class Perimeter {
         playerY = localLocation.getY();
 
         // If player position is out of left/top bounds, isOutside
-        if (playerY < northernTile.getY() || playerX < northernTile.getX()) isInside = false;
+        if (playerY > northernTile.getY() || playerX < northernTile.getX()) isInside = false;
         // If player position is out of right/bottom bounds, isOutside
-        else if (playerY > southernTile.getY() || playerX > southernTile.getX()) isInside = false;
+        else if (playerY < southernTile.getY() || playerX > southernTile.getX()) isInside = false;
 
         return isInside;
-
     }
 
 }
