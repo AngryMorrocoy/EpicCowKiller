@@ -18,7 +18,8 @@ import static com.epicbot.api.os.model.game.GameState.LOGGED_IN;
 public class main extends LoopScript {
 
     private NPC cowNPC;
-    private final Tile CastleStairs = new Tile(3206, 3228);
+    private final Tile castleStairs = new Tile(3206, 3228);
+    private final Tile cowsEntrance = new Tile(3249, 3266);
     private final Perimeter cowsTerrain = new Perimeter(
             new Tile(3253, 3271), // Northern point
             new Tile(3265, 3255) // Southern point
@@ -65,11 +66,18 @@ public class main extends LoopScript {
     }
 
     private SceneObject getCowsTerrainGate() {
-        return getAPIContext().objects().query()
+        final SceneObject[] gate = {null};
+        Tile localLocation = getAPIContext().localPlayer().getLocation();
+        getAPIContext().objects().query()
                 .nameMatches("Gate")
-                .reachable()
                 .results()
-                .nearest();  // Gets the nearest gate
+                .forEach((SceneObject obj) -> {
+                    System.out.println(obj.getLocation().toString());
+                    if (cowsEntrance.distanceTo(getAPIContext(), obj) <= 10) {
+                        gate[0] = obj;
+                    }
+                });
+        return gate[0];
     }
 
     private int openGate() {
@@ -89,7 +97,7 @@ public class main extends LoopScript {
                 }
             }
             gate.interact("Open");
-            return 750;
+            return 800;
         }
         return 100;
     }
@@ -98,7 +106,7 @@ public class main extends LoopScript {
         return (int) Math.floor(Math.random() * (max - min + 1) - min);
     }
 
-    private Path managePathTo(Locatable destination) throws Exception {
+    private Path managePathTo(Locatable destination) {
         Path path = getAPIContext().walking().findPath(destination);
         if (path == null) {
             destination = getAPIContext().walking().getClosestTileOnMap(destination);
@@ -106,7 +114,7 @@ public class main extends LoopScript {
         }
 
         if (!getAPIContext().localPlayer().getLocation().canReach(getAPIContext(), destination)) {
-            throw new Exception("Cannot reach the destination");
+            return null;
         }
         return path;
     }
@@ -121,53 +129,97 @@ public class main extends LoopScript {
         // If inventory is full
         if (apiContext.inventory().isFull()) {
             // Creates the path from the current location to the stairs of the castle
-            try {
-                Path path = managePathTo(CastleStairs);
-                // If the player cannot reach the destination, it means the gate is closed, so it opens it
-                // If near enough to the stairs, run
-                if (apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 13
-                        && !apiContext.walking().isRunEnabled()) {
-                    apiContext.walking().setRun(true);
-                }
-                // Walk to the stairs if in plane 0, and obviously not there
-                if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, CastleStairs) <= 1)
-                        && apiContext.localPlayer().getLocation().getPlane() < 1) {
-                    apiContext.walking().walkPath(path.getTiles());
-                } else {
-                    // Climb up stairs, until plane == 2 which is the plane where bank is at
-                    int oldPlane = apiContext.localPlayer().getLocation().getPlane();
-                    if (oldPlane == 2) {
-                        // If in bank floor, open bank
-                        if (apiContext.bank().open()) {
-                            // Wait until bank is open
-                            Sleep.sleepUntil(apiContext, () -> apiContext.bank().isOpen());
-                            // Deposit all the cowhide
-                            apiContext.bank().depositAll("Cowhide");
-                            Sleep.sleepUntil(apiContext, () -> getCowhideCount() == 0);
-                        }
-                    } else {
-                        // Climb up the stairs and wait until plane gets bigger
-                        getStairCase().interact("Climb-up");
-                        Sleep.sleepUntil(apiContext, () -> oldPlane < apiContext.localPlayer().getLocation().getPlane());
+            Path path = managePathTo(castleStairs);
+            // If the player cannot reach the destination, it means the gate is closed, so it opens it
+            // If near enough to the stairs, run
+            if (apiContext.localPlayer().getLocation().distanceTo(apiContext, castleStairs) <= 13
+                    && !apiContext.walking().isRunEnabled()) {
+                apiContext.walking().setRun(true);
+            }
+            // If path == null means it cannot be reached so, if it happens means the gate is closed
+            if (path == null && apiContext.localPlayer().getLocation().getPlane() < 1) {
+                return openGate();
+            }
+
+            // Walk to the stairs if in plane 0, and obviously not there
+            if (!(apiContext.localPlayer().getLocation().distanceTo(apiContext, castleStairs) <= 1)
+                    && apiContext.localPlayer().getLocation().getPlane() < 1) {
+                apiContext.walking().walkPath(path.getTiles());
+            } else {
+                // Climb up stairs, until plane == 2 which is the plane where bank is at
+                int currentPlane = apiContext.localPlayer().getLocation().getPlane();
+                if (currentPlane == 2) {
+                    // If in bank floor, open bank
+                    if (apiContext.bank().open()) {
+                        // Wait until bank is open
+                        Sleep.sleepUntil(apiContext, () -> apiContext.bank().isOpen());
+                        // Deposit all the cowhide
+                        apiContext.bank().depositAll("Cowhide");
+                        Sleep.sleepUntil(apiContext, () -> getCowhideCount() == 0);
                     }
-                }
-            } catch (Exception ignored) {
-                if (apiContext.localPlayer().getLocation().getPlane() < 1) {
-                    return openGate();
+                } else {
+                    // Climb up the stairs and wait until plane gets bigger
+                    getStairCase().interact("Climb-up");
+                    Sleep.sleepUntil(apiContext,
+                            () -> currentPlane < apiContext.localPlayer().getLocation().getPlane(),
+                            4000);
                 }
             }
-        } else if (!cowsTerrain.isPlayerInside(apiContext)) {
+        }
+        // If player not inside cows terrain
+        else if (!cowsTerrain.isPlayerInside(apiContext)) {
             // Enable run if it's not
             if (!apiContext.walking().isRunEnabled()
                     && apiContext.walking().getRunEnergy() >= getRandomInt(35, 60)) {
                 apiContext.walking().setRun(true);
             }
-            try {
-                Path path = managePathTo(cowsTerrain.getCenterTile());
-            } catch (Exception ignored) {
-                if (apiContext.localPlayer().getLocation().getPlane() < 1) {
+
+            if (apiContext.bank().isOpen()) {
+                apiContext.bank().close();
+                return 300;
+            }
+
+            // Make the path to the cows terrain
+            Path path = managePathTo(cowsTerrain.getCenterTile());
+
+            // If path is null, means cannot reach destination and if in plane < 1 means the gate is closed
+            if (path == null && apiContext.localPlayer().getLocation().getPlane() < 1) {
+                System.out.println("Laputamadre");
+                if (apiContext.localPlayer().getLocation().distanceTo(apiContext, cowsEntrance) >= 6) {
+                    System.out.println("Remaking path uwu");
+                    path = managePathTo(cowsEntrance);
+                    System.out.println(path);
+                    if (path == null) {
+                        getAPIContext().script().stop("Path still null, unexpected situation");
+                    }
+                } else {
                     return openGate();
                 }
+            }
+            if (path != null && apiContext.localPlayer().getLocation().getPlane() == 0) {
+                // Otherwise, just walk
+                System.out.println(path.getEnd());
+                apiContext.walking().walkPath(path.getTiles());
+            }
+            if (apiContext.localPlayer().getLocation().getPlane() > 0) {
+                // If plane > 0 means you're in some places of the lumbridge castle, so go down
+                SceneObject stairCase = getStairCase();
+                if (stairCase == null) {
+                    getAPIContext().script().stop("No staircases found, not expected situation");
+                }
+                if (!stairCase.isVisible()) {
+                    // Get the angle where u can see the staircase
+                    int angleToStairCase = apiContext.camera()
+                            .getAngleToDeg(getAPIContext().localPlayer().getLocation(), stairCase);
+                    apiContext.camera().setYaw(angleToStairCase);
+                    Sleep.sleepUntil(apiContext, stairCase::isVisible, 5000);
+                    if (!stairCase.isVisible()) {
+                        apiContext.walking().walkTo(stairCase, 2);
+                        return 400;
+                    }
+                }
+                stairCase.interact("Climb-down");
+                return 800;
             }
         }
         // If the player isn't interacting with anything
@@ -191,7 +243,7 @@ public class main extends LoopScript {
                         if (!apiContext.inventory().isFull()) {
                             int oldCowHideOnInv = getCowhideCount();
                             item.interact("Take");
-                            Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv);
+                            Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv, 7500);
                         }
                     });
                 }
