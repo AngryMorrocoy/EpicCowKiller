@@ -75,9 +75,9 @@ public class main extends LoopScript {
         final SceneObject[] gate = {null};
         getAPIContext().objects().query()
                 .nameMatches("Gate")
+                .actions("Open")
                 .results()
                 .forEach((SceneObject obj) -> {
-                    System.out.println(obj.getLocation().toString());
                     if (cowsEntrance.distanceTo(getAPIContext(), obj) <= 10) {
                         gate[0] = obj;
                     }
@@ -124,7 +124,7 @@ public class main extends LoopScript {
         }
 
 //        if (!getAPIContext().localPlayer().getLocation().canReach(getAPIContext(), destination)) {
-        if(!path.validate(getAPIContext())) {
+        if (!path.validate(getAPIContext())) {
             return null;
         }
         return path;
@@ -195,18 +195,19 @@ public class main extends LoopScript {
 
             // If path is null, means cannot reach destination and if in plane < 1 means the gate is closed
             if (path == null && apiContext.localPlayer().getLocation().getPlane() < 1) {
+                System.out.println("Path null :c");
                 if (apiContext.localPlayer().getLocation().distanceTo(apiContext, cowsEntrance) >= 6) {
                     path = managePathTo(cowsEntrance);
-                    if (path == null) {
-                        getAPIContext().script().stop("Path still null, unexpected situation");
-                    }
                 } else {
                     return openGate();
                 }
             }
             if (path != null && apiContext.localPlayer().getLocation().getPlane() == 0) {
                 // Otherwise, just walk
-                System.out.println(path.getEnd());
+                if (!apiContext.localPlayer().getLocation().canReach(apiContext, cowsTerrain.getCenterTile())
+                        && getCowsTerrainGate() != null) {
+                    return openGate();
+                }
                 apiContext.walking().walkPath(path.getTiles());
             }
             if (apiContext.localPlayer().getLocation().getPlane() > 0) {
@@ -248,10 +249,11 @@ public class main extends LoopScript {
                             () -> cowNPC.isDead() || apiContext.localPlayer().getInteracting() == null);
                     // Wait till the cowhide is on the inventory
                     getNearestCowhides().forEach((GroundItem item) -> {
-                        if (!apiContext.inventory().isFull()) {
+                        if (!apiContext.inventory().isFull()
+                                && item.distanceTo(getAPIContext(), apiContext.localPlayer().getLocation()) <= 6) {
                             int oldCowHideOnInv = getCowhideCount();
-                            item.interact("Take");
-                            Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv, 7500);
+                            Sleep.sleepUntilDelay(apiContext, () -> item.interact("Take"), 750, 3000);
+                            Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv, 4000);
                             collectedCowHide += Math.abs(getCowhideCount() - oldCowHideOnInv);
                         }
                     });
