@@ -29,8 +29,6 @@ public class Perimeter {
     }
 
     public boolean isPlayerInside(APIContext ctx) {
-        System.out.println(this.northernTile);
-        System.out.println(this.southernTile);
         int playerX, playerY;
         boolean isInside = true;
         Tile localLocation = ctx.localPlayer().getLocation();
