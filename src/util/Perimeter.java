@@ -1,6 +1,7 @@
 package util;
 
 import com.epicbot.api.shared.APIContext;
+import com.epicbot.api.shared.entity.details.Locatable;
 import com.epicbot.api.shared.model.Tile;
 
 public class Perimeter {
@@ -29,16 +30,20 @@ public class Perimeter {
     }
 
     public boolean isPlayerInside(APIContext ctx) {
-        int playerX, playerY;
-        boolean isInside = true;
-        Tile localLocation = ctx.localPlayer().getLocation();
-        playerX = localLocation.getX();
-        playerY = localLocation.getY();
+        return isInside(ctx.localPlayer().getLocation());
+    }
 
-        // If player position is out of left/top bounds, isOutside
-        if (playerY > northernTile.getY() || playerX < northernTile.getX()) isInside = false;
-        // If player position is out of right/bottom bounds, isOutside
-        else if (playerY < southernTile.getY() || playerX > southernTile.getX()) isInside = false;
+    public boolean isInside(Locatable entity) {
+        int entityX, entityY;
+        boolean isInside = true;
+        Tile localLocation = entity.getLocation();
+        entityX = localLocation.getX();
+        entityY = localLocation.getY();
+
+        // If entity position is out of left/top bounds, isOutside
+        if (entityY > northernTile.getY() || entityX < northernTile.getX()) isInside = false;
+        // If entity position is out of right/bottom bounds, isOutside
+        else if (entityY < southernTile.getY() || entityX > southernTile.getX()) isInside = false;
 
         return isInside;
     }
@@ -46,12 +51,12 @@ public class Perimeter {
     public Tile getCenterTile() {
         int midX = northernTile.getX() +
                 Math.floorDiv(
-                        Math.abs( northernTile.getX() - southernTile.getX() ),
+                        Math.abs(northernTile.getX() - southernTile.getX()),
                         2
                 );
         int midY = southernTile.getY() +
                 Math.floorDiv(
-                        Math.abs( northernTile.getY() - southernTile.getY() ),
+                        Math.abs(northernTile.getY() - southernTile.getY()),
                         2
                 );
         return new Tile(midX, midY);
