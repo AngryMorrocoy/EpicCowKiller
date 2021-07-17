@@ -9,8 +9,12 @@ import com.epicbot.api.shared.model.path.Path;
 import com.epicbot.api.shared.query.result.LocatableEntityQueryResult;
 import com.epicbot.api.shared.script.LoopScript;
 import com.epicbot.api.shared.script.ScriptManifest;
+import com.epicbot.api.shared.util.paint.frame.PaintFrame;
+import com.epicbot.api.shared.util.time.Time;
 import util.Perimeter;
 import util.Sleep;
+
+import java.awt.*;
 
 import static com.epicbot.api.os.model.game.GameState.LOGGED_IN;
 
@@ -24,6 +28,8 @@ public class main extends LoopScript {
             new Tile(3253, 3271), // Northern point
             new Tile(3265, 3255) // Southern point
     );
+    private long startTime;
+    private int collectedCowHide = 0;
 
     private NPC getCowNPC() {
         return getAPIContext().npcs().query()
@@ -67,7 +73,6 @@ public class main extends LoopScript {
 
     private SceneObject getCowsTerrainGate() {
         final SceneObject[] gate = {null};
-        Tile localLocation = getAPIContext().localPlayer().getLocation();
         getAPIContext().objects().query()
                 .nameMatches("Gate")
                 .results()
@@ -111,9 +116,15 @@ public class main extends LoopScript {
         if (path == null) {
             destination = getAPIContext().walking().getClosestTileOnMap(destination);
             path = getAPIContext().walking().findPath(destination);
+            if (path == null) {
+                destination = new Perimeter(getAPIContext().localPlayer().getLocation(),
+                        destination.getLocation()).getCenterTile();
+                path = getAPIContext().walking().findPath(destination);
+            }
         }
 
-        if (!getAPIContext().localPlayer().getLocation().canReach(getAPIContext(), destination)) {
+//        if (!getAPIContext().localPlayer().getLocation().canReach(getAPIContext(), destination)) {
+        if(!path.validate(getAPIContext())) {
             return null;
         }
         return path;
@@ -184,11 +195,8 @@ public class main extends LoopScript {
 
             // If path is null, means cannot reach destination and if in plane < 1 means the gate is closed
             if (path == null && apiContext.localPlayer().getLocation().getPlane() < 1) {
-                System.out.println("Laputamadre");
                 if (apiContext.localPlayer().getLocation().distanceTo(apiContext, cowsEntrance) >= 6) {
-                    System.out.println("Remaking path uwu");
                     path = managePathTo(cowsEntrance);
-                    System.out.println(path);
                     if (path == null) {
                         getAPIContext().script().stop("Path still null, unexpected situation");
                     }
@@ -244,6 +252,7 @@ public class main extends LoopScript {
                             int oldCowHideOnInv = getCowhideCount();
                             item.interact("Take");
                             Sleep.sleepUntil(apiContext, () -> getCowhideCount() > oldCowHideOnInv, 7500);
+                            collectedCowHide += Math.abs(getCowhideCount() - oldCowHideOnInv);
                         }
                     });
                 }
@@ -255,7 +264,23 @@ public class main extends LoopScript {
     @Override
     public boolean onStart(String... strings) {
         System.out.println("Starting EpicCowKiller");
+        startTime = System.currentTimeMillis();
         return true;
     }
+
+    @Override
+    protected void onPaint(Graphics2D g, APIContext ctx) {
+        if (getAPIContext().client().isLoggedIn()) {
+            PaintFrame frame = new PaintFrame();
+            frame.setTitle("sCowKiller");
+            frame.addLine("Runtime: ", Time.getFormattedRuntime(startTime)); // we use startTime here from the very beginning
+            frame.addLine("", "");
+            frame.addLine("Cowhide collected: ", collectedCowHide);
+            frame.draw(g, 0, 90, ctx); //drawing the actual frame.
+            g.setColor(new Color(208, 189, 155, 255));
+            g.fillRect(11, 468, 120, 15); //name covering stuff, honestly might remove it cuz kinda pointless? Dunno
+        }
+    }
+
 
 }
