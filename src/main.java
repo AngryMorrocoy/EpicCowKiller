@@ -123,7 +123,6 @@ public class main extends LoopScript {
             }
         }
 
-//        if (!getAPIContext().localPlayer().getLocation().canReach(getAPIContext(), destination)) {
         if (!path.validate(getAPIContext())) {
             return null;
         }
@@ -163,10 +162,10 @@ public class main extends LoopScript {
                     // If in bank floor, open bank
                     if (apiContext.bank().open()) {
                         // Wait until bank is open
-                        Sleep.sleepUntil(apiContext, () -> apiContext.bank().isOpen());
+                        Sleep.sleepUntil(apiContext, () -> apiContext.bank().isOpen(), 3500);
                         // Deposit all the cowhide
                         apiContext.bank().depositAll("Cowhide");
-                        Sleep.sleepUntil(apiContext, () -> getCowhideCount() == 0);
+                        Sleep.sleepUntil(apiContext, () -> getCowhideCount() == 0, 3500);
                     }
                 } else {
                     // Climb up the stairs and wait until plane gets bigger
@@ -274,13 +273,13 @@ public class main extends LoopScript {
     protected void onPaint(Graphics2D g, APIContext ctx) {
         if (getAPIContext().client().isLoggedIn()) {
             PaintFrame frame = new PaintFrame();
-            frame.setTitle("sCowKiller");
+            frame.setTitle("EpicCowKiller uwu");
             frame.addLine("Runtime: ", Time.getFormattedRuntime(startTime)); // we use startTime here from the very beginning
             frame.addLine("", "");
             frame.addLine("Cowhide collected: ", collectedCowHide);
             frame.draw(g, 0, 90, ctx); //drawing the actual frame.
-            g.setColor(new Color(208, 189, 155, 255));
-            g.fillRect(11, 468, 120, 15); //name covering stuff, honestly might remove it cuz kinda pointless? Dunno
+//            g.setColor(new Color(208, 189, 155, 255));
+//            g.fillRect(11, 468, 120, 15); //name covering stuff, honestly might remove it cuz kinda pointless? Dunno
         }
     }
 
