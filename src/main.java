@@ -108,7 +108,8 @@ public class main extends LoopScript {
     }
 
     private int getRandomInt(int min, int max) {
-        return (int) Math.floor(Math.random() * (max - min + 1) - min);
+//        return (int) Math.floor(Math.random() * (max - min + 1) - min);
+        return (int) Math.floor(Math.random() * (max - min + 1) + min);
     }
 
     private Path managePathTo(Locatable destination) {
@@ -278,8 +279,6 @@ public class main extends LoopScript {
             frame.addLine("", "");
             frame.addLine("Cowhide collected: ", collectedCowHide);
             frame.draw(g, 0, 90, ctx); //drawing the actual frame.
-//            g.setColor(new Color(208, 189, 155, 255));
-//            g.fillRect(11, 468, 120, 15); //name covering stuff, honestly might remove it cuz kinda pointless? Dunno
         }
     }
 
